@@ -114,7 +114,7 @@ def upsert_to_database(file_path, connection):
 # Define the SQL statement for table creation
 create_table_sql = '''
 CREATE TABLE IF NOT EXISTS file_name_info (
-    file_pk INT AUTO_INCREMENT PRIMARY KEY,
+    file_name_info_pk INT AUTO_INCREMENT PRIMARY KEY,
     file_path VARCHAR(255) UNIQUE,
     file_size BIGINT,
     file_name VARCHAR(255),
@@ -149,20 +149,20 @@ def create_xls_file_sheet_table(connection, xls_files):
                 # Create the xls_file_sheet table
                 cursor.execute(f'''
                     CREATE TABLE IF NOT EXISTS xls_file_sheet (
-                        xls_pk INT AUTO_INCREMENT PRIMARY KEY,
-                        file_pk INT ,
+                        xls_file_sheet_pk INT AUTO_INCREMENT PRIMARY KEY,
+                        file_name_info_fk INT ,
                         sheet_name VARCHAR(255),
                         total_cols INT,
                         total_rows INT,
-                        UNIQUE KEY unique_file_sheet (file_pk, sheet_name),
-                        FOREIGN KEY (file_pk) REFERENCES file_name_info(file_pk)
+                        UNIQUE KEY unique_file_sheet (xls_file_sheet_pk, sheet_name),
+                        FOREIGN KEY (file_name_info_fk) REFERENCES file_name_info(file_name_info_pk)
                     );
                 ''')
                 connection.commit()
                 cursor.execute('''
-                INSERT INTO xls_file_sheet (file_pk, sheet_name, total_cols, total_rows)
+                INSERT INTO xls_file_sheet (file_name_info_fk, sheet_name, total_cols, total_rows)
                 VALUES (
-                    (SELECT file_pk FROM file_name_info WHERE file_path = %s),
+                    (SELECT file_name_info_pk FROM file_name_info WHERE file_path = %s),
                     %s, %s, %s
                 )ON DUPLICATE KEY UPDATE
                                total_cols=VALUES(total_cols),
@@ -188,7 +188,7 @@ def create_xls_file_sheet_row_table(connection, xls_files):
                 cursor.execute(f'''
                     CREATE TABLE IF NOT EXISTS xls_file_sheet_row (
                         xls_file_sheet_row_pk INT AUTO_INCREMENT PRIMARY KEY,
-                        fk INT,
+                        xls_file_sheet_fk INT,
                         sheet_name VARCHAR(255),
                         col_no INT,
                         row_no INT,
@@ -204,8 +204,8 @@ def create_xls_file_sheet_row_table(connection, xls_files):
                         col_data_9 VARCHAR(255),
                         col_data_10 VARCHAR(255),
                         is_truncate VARCHAR(3),
-                        UNIQUE KEY unique_file_sheet (fk, sheet_name,row_no),
-                        FOREIGN KEY (fk) REFERENCES xls_file_sheet(xls_pk)
+                        UNIQUE KEY unique_file_sheet (xls_file_sheet_fk, sheet_name,row_no),
+                        FOREIGN KEY (xls_file_sheet_fk) REFERENCES xls_file_sheet(xls_file_sheet_pk)
                     );
                 ''')
                 connection.commit()
@@ -220,11 +220,11 @@ def create_xls_file_sheet_row_table(connection, xls_files):
                     is_truncate = "yes" if num_cols > 10 else "no"
 
                     cursor.execute(f'''
-                    INSERT INTO xls_file_sheet_row (fk, sheet_name, col_no, row_no, is_row,
+                    INSERT INTO xls_file_sheet_row (xls_file_sheet_fk, sheet_name, col_no, row_no, is_row,
                     col_data_1, col_data_2, col_data_3, col_data_4, col_data_5,
                     col_data_6, col_data_7, col_data_8, col_data_9, col_data_10, is_truncate)
                     VALUES (
-                    (SELECT xls_pk FROM xls_file_sheet WHERE sheet_name = %s LIMIT 1),
+                    (SELECT xls_file_sheet_pk FROM xls_file_sheet WHERE sheet_name = %s LIMIT 1),
                     %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                     );
                     ''', (sheet_name, sheet_name, num_cols, row_idx + 1, is_row, *col_data, is_truncate))
